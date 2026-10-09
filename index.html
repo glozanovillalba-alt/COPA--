@@ -6,6 +6,50 @@ const pairs=[[0,1],[2,3],[0,2],[1,3],[0,3],[1,2]];
 let S=JSON.parse(localStorage.getItem('copa2026')||'{"group":{},"ko":{}}'); function save(){localStorage.setItem('copa2026',JSON.stringify(S))}
 let view='grupos'; const esc=s=>(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;');
 function gid(g,a,b){return `g${g}-${a}-${b}`}; function tie(g,a,b){let k=gid(g,a,b); return S.group[k]||(S.group[k]={w:[null,null,null],score:['','','']})}
+
+// Resultados transcritos de 10 actas; solo se precargan si no hay resultados guardados.
+const ACTAS=[
+ [1,1,3,[0,0,0],['5/7 6/3 10/4','6/3 6/2','6/4 6/0']],
+ [4,1,0,[1,0,0],['3/6 6/4 10/4 (revisar)','6/1 6/2','2/6 6/4 10/6']],
+ [4,1,3,[0,0,0],['7/6 6/0','6/0 6/1','6/0 6/1']],
+ [4,0,2,[0,0,0],['6/1 6/3','6/0 6/2','6/0 6/2']],
+ [1,0,2,[0,0,0],['6/2 6/0','6/0 10/6 (revisar)','6/0 6/0']],
+ [2,1,3,[0,0,0],['6/0 6/1','6/1 6/1','6/0 6/2']],
+ [3,1,3,[0,0,0],['6/0 6/1','3/6 6/3 10/8','6/0 6/1']],
+ [2,0,2,[1,0,1],['7/6 6/2','6/1 6/0','6/3 6/2']],
+ [3,0,2,[0,0,0],['6/2 6/3','6/0 6/3','6/0 6/0']],
+ [3,0,1,[0,0,0],['6/2 6/0','6/2 6/2','6/2 6/0']]
+];
+// Seis actas adicionales. Ganador por pareja: 0=equipo 1, 1=equipo 2.
+const ACTAS_NUEVAS=[
+ [1,0,1,[0,1,1],['7/6 6/1','6/4 7/6','6/0 6/0']],
+ [4,2,3,[0,0,0],['6/3 6/0 (revisar)','7/6 6/1','6/2 6/1']],
+ [1,2,3,[1,1,1],['6/3 6/4','6/3 6/4 7/6 (revisar)','6/0 6/2']],
+ [2,0,1,[0,1,1],['6/3 7/5 (revisar)','6/4 6/3','6/0 6/3']],
+ [3,2,3,[1,0,0],['6/1 6/2','6/2 6/4','6/1 6/0']],
+ [2,2,3,[0,0,0],['6/0 6/1','6/0 6/0','6/0 6/1']]
+];
+function applyActa(item,overwrite=false){let [g,x,y,w,sc]=item,a=Math.min(x,y),b=Math.max(x,y),reverse=x!==a,k=`g${g}-${a}-${b}`;
+ if(!overwrite&&S.group[k])return;
+ S.group[k]={w:w.map(z=>reverse?(z===0?x:y):(z===0?a:b)),score:sc};
+}
+if(!localStorage.getItem('copa2026')){
+ for(const acta of ACTAS)applyActa(acta);
+ for(const acta of ACTAS_NUEVAS)applyActa(acta);
+ save();
+}else if(localStorage.getItem('copa2026_actas16')!=='1'){
+ // Conservar resultados existentes; añadir solo encuentros aún vacíos.
+ for(const acta of ACTAS_NUEVAS)applyActa(acta);
+ // Corregir la asociación inicial de la primera acta si seguía con datos de ejemplo.
+ const old=S.group['g1-0-1'];
+ if(old&&JSON.stringify(old.score)===JSON.stringify(['5/7 6/3 10/4','6/3 6/2','6/4 6/0'])){
+   if(!S.group['g1-1-3'])S.group['g1-1-3']={...old,w:[1,1,1]};
+   delete S.group['g1-0-1'];
+   applyActa(ACTAS_NUEVAS[0]);
+ }
+ save();
+}
+localStorage.setItem('copa2026_actas16','1');
 function standings(g){let teams=GROUPS[g], st=teams.map((n,i)=>({i,n,j:0,g:0,p:0,rf:0,rc:0})); pairs.forEach(([a,b])=>{let t=tie(g,a,b),wa=t.w.filter(x=>x===a).length,wb=t.w.filter(x=>x===b).length;if(wa+wb===3){st[a].j++;st[b].j++;st[a].rf+=wa;st[a].rc+=wb;st[b].rf+=wb;st[b].rc+=wa;if(wa>wb){st[a].g++;st[a].p+=2}else{st[b].g++;st[b].p+=2}}}); return st.sort((x,y)=>y.p-x.p||y.g-x.g||(y.rf-y.rc)-(x.rf-x.rc)||y.rf-x.rf||x.n.localeCompare(y.n))}
 function groupComplete(g){return standings(g).every(x=>x.j===3)} function allGroups(){return [1,2,3,4].every(groupComplete)}
 function q(rank,g){let st=standings(g);return groupComplete(g)?st[rank-1].n:`${['1.º','2.º','3.º','4.º'][rank-1]} Grupo ${g}`}
