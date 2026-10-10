@@ -15,7 +15,32 @@ header{box-shadow:0 2px 12px #0002}
 input.score{font-size:16px;max-width:100%}
 .stand{min-width:580px}
 @media(max-width:390px){.wrap{padding:9px 9px 75px}.card{padding:11px}.teams{font-size:13px}.win{font-size:11px;padding:9px 3px}}
-</style></head><body><header><h1>🏆 Copa Internacional 2026</h1><small>Control de resultados · 16 equipos · versión verde</small></header><nav class="tabs" id="tabs"></nav><main class="wrap" id="app"></main>
+
+/* Impresión de documentos independientes */
+.pdf-tools{display:flex;gap:7px;flex-wrap:wrap;max-width:950px;margin:10px auto 0;padding:0 12px}
+.pdf-btn{background:#0b5d42;color:#fff;border:0;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:650;flex:1 1 130px}
+#print-sheet{display:none}
+@media print{
+ @page{size:A4 portrait;margin:13mm}
+ body{background:#fff!important;color:#17221e!important;font:10pt Arial,sans-serif!important}
+ body>header,body>nav,body>main,body>.pdf-tools{display:none!important}
+ #print-sheet{display:block!important}
+ .print-title{color:#0b5d42;font-size:21pt;margin:0 0 4mm}
+ .print-sub{color:#51685c;font-size:10pt;margin:0 0 7mm}
+ .print-section{break-inside:avoid;page-break-inside:avoid;margin-bottom:8mm}
+ .print-section h2{color:#0b5d42;font-size:14pt;border-bottom:2px solid #0b5d42;padding-bottom:2mm}
+ .print-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8.5pt}
+ .print-table th,.print-table td{border-bottom:1px solid #d5e1d9;padding:2.5mm 1mm;text-align:center;overflow-wrap:anywhere}
+ .print-table th{background:#e8f2ec;color:#0b5d42}
+ .print-table th:nth-child(2),.print-table td:nth-child(2){text-align:left;width:34%}
+ .print-match{border:1px solid #d5e1d9;padding:4mm;margin:0 0 4mm;break-inside:avoid;border-radius:3mm}
+ .print-match strong{color:#0b5d42}
+ .print-pair{display:flex;justify-content:space-between;gap:4mm;margin-top:2mm}
+ .print-pair span{width:46%;overflow-wrap:anywhere}
+ .print-pair span:last-child{text-align:right}
+ .print-note{font-size:9pt;color:#53685c;margin-top:5mm}
+}
+</style></head><body><header><h1>🏆 Copa Internacional 2026</h1><small>Control de resultados · 16 equipos · versión verde</small></header><nav class="tabs" id="tabs"></nav><div class="pdf-tools"><button class="pdf-btn" onclick="printTournament('clas')">📄 PDF Clasificación</button><button class="pdf-btn" onclick="printTournament('semis')">📄 PDF Semifinales</button><button class="pdf-btn" onclick="printTournament('puestos')">📄 PDF Puestos</button></div><main class="wrap" id="app"></main><div id="print-sheet" aria-hidden="true"></div>
 <script>
 'use strict';
 const GROUPS={"1":["U PADEL (France–Espagne)","PADEL VINTAGE","PANGO SPORTS (France)","ADOUR (France)"],"2":["PADEL SPORT ACADEMY (Argentine)","PADEL CENTER (Roumanie)","SHARK (Espagne)","BUP (France)"],"3":["MANANTIALES (Espagne)","DRAGON (Tahiti)","BURDIGALA (France)","SILIN (Russie)"],"4":["BORDEAUX (France)","TMAX (Espagne)","AECP (Espagne)","SQUADRA CORSA (France)"]};
@@ -65,4 +90,27 @@ function render(){tabs();let a=document.getElementById('app');if(view==='grupos'
 function exportData(){let b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='copa-internacional-2026-resultados.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
 async function importData(input){let f=input.files[0];if(!f)return;try{let data=JSON.parse(await f.text());if(!data.group||!data.ko||typeof data.group!=='object'||typeof data.ko!=='object')throw Error('Formato no válido');if(confirm('¿Restaurar esta copia? Sustituirá los resultados actuales de este dispositivo.')){S=data;save();render()}}catch(e){alert('No se pudo importar la copia: '+e.message)}}
 function resetAll(){if(confirm('¿Borrar todos los resultados de este dispositivo? Exporta antes una copia si los necesitas.')){S={group:{},ko:{}};save();render()}}render();
+
+function printTournament(kind){
+ const sheet=document.getElementById('print-sheet');
+ const title={clas:'Clasificación de grupos',semis:'Cruces de semifinales',puestos:'Clasificación final — puestos 1 al 16'}[kind];
+ const top=`<h1 class="print-title">🏆 Copa Internacional 2026</h1><p class="print-sub">${title} · Documento generado desde la web del torneo</p>`;
+ let body='';
+ if(kind==='clas'){
+  body=[1,2,3,4].map(g=>{
+   let rows=standings(g);
+   return `<section class="print-section"><h2>Grupo ${g}${groupComplete(g)?' · Completo':''}</h2><table class="print-table"><thead><tr><th>#</th><th>Equipo</th><th>J</th><th>G</th><th>Pts</th><th>SF</th><th>SC</th><th>Dif S</th><th>JF</th><th>JC</th><th>Dif J</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.n)}</td><td>${x.j}</td><td>${x.g}</td><td><b>${x.p}</b></td><td>${x.sf}</td><td>${x.sa}</td><td>${x.sf-x.sa}</td><td>${x.jf}</td><td>${x.ja}</td><td>${x.jf-x.ja}</td></tr>`).join('')}</tbody></table></section>`
+  }).join('')+'<p class="print-note">1 punto por partido ganado (MASC 1, MASC 2 o FEM 1). Desempates: diferencia de sets y diferencia de juegos. Los marcadores pendientes de revisión pueden alterar los desempates.</p>';
+ }else if(kind==='semis'){
+  body=[['Puestos 1–4',['101','102']],['Puestos 5–8',['201','202']],['Puestos 9–12',['301','302']],['Puestos 13–16',['401','402']]].map(([label,ids])=>`<section class="print-section"><h2>${label}</h2>${ids.map(id=>{let [a,b]=participants(id);return `<div class="print-match"><strong>Semifinal ${id}</strong><div class="print-pair"><span>${esc(a)}</span><b>VS</b><span>${esc(b)}</span></div></div>`}).join('')}</section>`).join('');
+ }else{
+  const ids=['103','104','203','204','303','304','403','404'];
+  const complete=ids.every(id=>S.ko[id]!==undefined);
+  const pos=complete?[[1,winner('103')],[2,loser('103')],[3,winner('104')],[4,loser('104')],[5,winner('203')],[6,loser('203')],[7,winner('204')],[8,loser('204')],[9,winner('303')],[10,loser('303')],[11,winner('304')],[12,loser('304')],[13,winner('403')],[14,loser('403')],[15,winner('404')],[16,loser('404')]]:[];
+  body=complete?`<section class="print-section"><h2>Clasificación definitiva</h2><table class="print-table"><thead><tr><th style="width:15%">Puesto</th><th style="width:85%">Equipo</th></tr></thead><tbody>${pos.map(([n,t])=>`<tr><td><b>${n}.º</b></td><td style="text-align:left">${esc(t)}</td></tr>`).join('')}</tbody></table></section>`:'<section class="print-section"><h2>Clasificación pendiente</h2><p>La clasificación final se podrá imprimir cuando se hayan registrado los ganadores de las ocho finales.</p></section>';
+ }
+ sheet.innerHTML=top+body;
+ sheet.setAttribute('aria-hidden','false');
+ window.print();
+}
 </script></body></html>
